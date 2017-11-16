@@ -1,11 +1,12 @@
 import os
+import shlex
 from distutils import log
 
 from setuptools import Command
 
 from pex.bin.pex import build_pex, configure_clp, make_relative_to_root
 from pex.common import die
-from pex.compatibility import ConfigParser, StringIO, string
+from pex.compatibility import ConfigParser, StringIO, string, to_unicode
 from pex.variables import ENV
 
 
@@ -29,7 +30,7 @@ class bdist_pex(Command):  # noqa
     self.pex_args = ''
 
   def finalize_options(self):
-    self.pex_args = self.pex_args.split()
+    self.pex_args = shlex.split(self.pex_args)
 
   def _write(self, pex_builder, target, script=None):
     builder = pex_builder.clone()
@@ -48,7 +49,7 @@ class bdist_pex(Command):  # noqa
 
     if isinstance(raw_entry_points, string):
       parser = ConfigParser()
-      parser.readfp(StringIO(raw_entry_points))
+      parser.readfp(StringIO(to_unicode(raw_entry_points)))
       if parser.has_section('console_scripts'):
         return dict(parser.items('console_scripts'))
     elif isinstance(raw_entry_points, dict):
@@ -77,6 +78,7 @@ class bdist_pex(Command):  # noqa
     # Update cache_dir with pex_root in case this is being called directly.
     if options.cache_dir:
       options.cache_dir = make_relative_to_root(options.cache_dir)
+    options.interpreter_cache_dir = make_relative_to_root(options.interpreter_cache_dir)
 
     if options.entry_point or options.script:
       die('Must not specify entry_point or script to --pex-args')

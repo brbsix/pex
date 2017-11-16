@@ -1,6 +1,208 @@
 Release Notes
 =============
 
+1.2.13
+------
+
+* Fix handling of pre-release option. (#424)
+  `#424 <https://github.com/pantsbuild/pex/pull/424>`_
+
+* Patch sys module using pex_path from PEX-INFO metadata (#421)
+  `#421 <https://github.com/pantsbuild/pex/pull/421>`_
+
+1.2.12
+------
+
+* Create --pex-path argument for pex cli and load pex path into pex-info metadata (#417)
+  `#417 <https://github.com/pantsbuild/pex/pull/417>`_
+
+1.2.11
+------
+
+* Leverage `subprocess32` when available. (#411)
+  `#411 <https://github.com/pantsbuild/pex/pull/411>`_
+
+* Kill support for python 2.6. (#408)
+  `#405 <https://github.com/pantsbuild/pex/issues/405>`_
+  `#408 <https://github.com/pantsbuild/pex/pull/408>`_
+
+1.2.10
+------
+
+* Allow passing a preamble file to the CLI (#400)
+  `#400 <https://github.com/pantsbuild/pex/pull/400>`_
+
+1.2.9
+-----
+
+* Add first-class support for multi-interpreter and multi-platform pex construction. (#394)
+  `#394 <https://github.com/pantsbuild/pex/pull/394>`_
+
+1.2.8
+-----
+
+* Minimum setuptools version should be 20.3 (#391)
+  `#391 <https://github.com/pantsbuild/pex/pull/391>`_
+
+* Improve wheel support in pex. (#388)
+  `#388 <https://github.com/pantsbuild/pex/pull/388>`_
+
+1.2.7
+-----
+
+* Sort keys in PEX-INFO file so the output is deterministic. (#384)
+  `#384 <https://github.com/pantsbuild/pex/pull/384>`_
+
+* Pass platform for SourceTranslator (#386)
+  `#386 <https://github.com/pantsbuild/pex/pull/386>`_
+
+1.2.6
+-----
+
+* Fix for Ambiguous Resolvable bug in transitive dependency resolution (#367)
+  `#367 <https://github.com/pantsbuild/pex/pull/367>`_
+
+1.2.5
+-----
+
+This release follows-up on 1.2.0 fixing bugs in the pre-release resolving code paths.
+
+* Resolving pre-release when explicitly requested (#372)
+  `#374 <https://github.com/pantsbuild/pex/pull/374>`_
+
+* Pass allow_prerelease to other iterators (Static, Caching) (#373)
+  `#373 <https://github.com/pantsbuild/pex/pull/373>`_
+
+1.2.4
+-----
+
+* Fix bug in cached dependency resolution with exact resolvable. (#365)
+  `#365 <https://github.com/pantsbuild/pex/pull/365>`_
+
+* Treat .pth injected paths as extras. (#370)
+  `#370 <https://github.com/pantsbuild/pex/pull/370>`_
+
+1.2.3
+-----
+
+* Follow redirects on HTTP requests (#361)
+  `#361 <https://github.com/pantsbuild/pex/pull/361>`_
+
+* Fix corner case in cached dependency resolution (#362)
+  `#362 <https://github.com/pantsbuild/pex/pull/362>`_
+
+1.2.2
+-----
+
+* Fix CacheControl import. (#357)
+  `#357 <https://github.com/pantsbuild/pex/pull/357>`_
+
+1.2.1
+-----
+
+This release is a quick fix for a bootstrapping bug that inadvertently went out in 1.2.0 (Issue
+#354).
+
+* Ensure `packaging` dependency is self-contained. (#355)
+  `#355 <https://github.com/pantsbuild/pex/pull/355>`_
+  `Fixes #354 <https://github.com/pantsbuild/pex/issues/354>`_
+
+1.2.0
+-----
+
+This release changes pex requirement resolution behavior. Only stable requirements are resolved by
+default now. The previous behavior that included pre-releases can be retained by passing `--pre` on
+the pex command line or passing `allow_prereleases=True` via the API.
+
+* Upgrade dependencies to modern version ranges. (#352)
+  `#352 <https://github.com/pantsbuild/pex/pull/352>`_
+
+* Add support for controlling prerelease resolution. (#350)
+  `#350 <https://github.com/pantsbuild/pex/pull/350>`_
+  `Fixes #28 <https://github.com/pantsbuild/pex/issues/28>`_
+
+1.1.20
+------
+
+* Add dummy flush method for clean interpreter exit with python3.6 (#343)
+  `#343 <https://github.com/pantsbuild/pex/pull/343>`_
+
+1.1.19
+------
+
+* Implement --constraints in pex (#335)
+  `#335 <https://github.com/pantsbuild/pex/pull/335>`_
+
+* Make sure namespace packages (e.g. virtualenvwrapper) don't break pex (#338)
+  `#338 <https://github.com/pantsbuild/pex/pull/338>`_
+
+1.1.18
+------
+
+* Expose a PEX instance's path. (#332)
+  `#332 <https://github.com/pantsbuild/pex/pull/332>`_
+
+* Check for scripts directory in get_script_from_egg (#328)
+  `#328 <https://github.com/pantsbuild/pex/pull/328>`_
+
+1.1.17
+------
+
+* Make PEX_PATH unify pex sources, as well as requirements. (#329)
+  `#329 <https://github.com/pantsbuild/pex/pull/329>`_
+
+1.1.16
+------
+
+* Adjust FileFinder import to work with Python 3.6. (#318)
+  `#318 <https://github.com/pantsbuild/pex/pull/318>`_
+
+* Kill zipmanifest monkeypatching. (#322)
+  `#322 <https://github.com/pantsbuild/pex/pull/322>`_
+
+* Bump setuptools range to latest. (#323)
+  `#323 <https://github.com/pantsbuild/pex/pull/323>`_
+
+1.1.15
+------
+
+* Fix #309 by deduplicating output of the distribution finder. (#310)
+  `#310 <https://github.com/pantsbuild/pex/pull/310>`_
+
+* Update wheel dependency to >0.26.0. (#304)
+  `#304 <https://github.com/pantsbuild/pex/pull/304>`_
+
+1.1.14
+------
+
+* Repair Executor error handling for other classes of IOError/OSError. (#292)
+  `#292 <https://github.com/pantsbuild/pex/pull/292>`_
+
+* Fix bdist_pex --pex-args. (#285)
+  `#285 <https://github.com/pantsbuild/pex/pull/285>`_
+
+* Inherit user site with --inherit-path. (#284)
+  `#284 <https://github.com/pantsbuild/pex/pull/284>`_
+
+1.1.13
+------
+
+* Repair passing of stdio kwargs to PEX.run(). (#288)
+  `#288 <https://github.com/pantsbuild/pex/pull/288>`_
+
+1.1.12
+------
+
+* Fix bdist_pex interpreter cache directory. (#286)
+  `#286 <https://github.com/pantsbuild/pex/pull/286>`_
+
+* Normalize and edify subprocess execution. (#255)
+  `#255 <https://github.com/pantsbuild/pex/pull/255>`_
+
+* Don't ignore exit codes when using setuptools entry points. (#280)
+  `#280 <https://github.com/pantsbuild/pex/pull/280>`_
+  `Fixes #137 <https://github.com/pantsbuild/pex/issues/137>`_
+
 1.1.11
 ------
 

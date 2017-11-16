@@ -4,7 +4,7 @@
 import pytest
 from pkg_resources import Requirement, parse_version
 
-from pex.package import EggPackage, SourcePackage
+from pex.package import EggPackage, SourcePackage, WheelPackage
 
 
 def test_source_packages():
@@ -68,3 +68,82 @@ def test_egg_packages():
 
   with pytest.raises(EggPackage.InvalidPackage):
     EggPackage('bar-py2.6.egg')
+
+
+def test_wheel_package():
+  wp = WheelPackage(
+      'file:///home/user/.pex/build/requests-2.12.1-py2.py3-none-any.whl'
+  )
+  assert wp.name == "requests"
+  assert wp.raw_version == "2.12.1"
+  assert wp._py_tag == "py2.py3"
+  assert wp._abi_tag == "none"
+  assert wp._arch_tag == "any"
+
+
+@pytest.mark.parametrize("package_name", [
+  "transmute_core-0.4.5-py2.py3-none-any-gobbledy.whl"
+])
+def test_invalid_wheel_package_name(package_name):
+  with pytest.raises(WheelPackage.InvalidPackage):
+    WheelPackage(package_name)
+
+
+def test_different_wheel_packages_should_be_equal():
+  pypi_package = WheelPackage(
+    'https://pypi.python.org/packages/9b/31/'
+    'e9925a2b9a06f97c3450bac6107928d3533bfe64ca5615442504104321e8/'
+    'requests-2.12.1-py2.py3-none-any.whl'
+  )
+  local_package = WheelPackage(
+    'https://internalpypi.mycompany.org/packages/9b/31/'
+    'e9925a2b9a06f97c3450bac6107928d3533bfe64ca5615442504104321e8/'
+    'requests-2.12.1-py2.py3-none-any.whl'
+  )
+  assert pypi_package == local_package
+
+
+def test_prereleases():
+  def source_package(version):
+    return SourcePackage('setuptools-%s.tar.gz' % version)
+
+  def egg_package(version):
+    return EggPackage('setuptools-%s-py2.7.egg' % version)
+
+  def wheel_package(version):
+    return WheelPackage('file:///tmp/setuptools-%s-py2.py3-none-any.whl' % version)
+
+  requirement = 'setuptools>=6,<8'
+
+  for package in (egg_package, source_package, egg_package, wheel_package):
+    stable_package = package('7.0')
+    assert stable_package.satisfies(requirement)
+    assert stable_package.satisfies(requirement, allow_prereleases=False)
+    assert stable_package.satisfies(requirement, allow_prereleases=True)
+
+    prerelease_package = package('7.0b1')
+
+    # satisfies should exclude prereleases by default.
+    assert not prerelease_package.satisfies(requirement)
+
+    assert not prerelease_package.satisfies(requirement, allow_prereleases=False)
+    assert prerelease_package.satisfies(requirement, allow_prereleases=True)
+
+
+def test_explicit_prereleases():
+  def source_package(version):
+    return SourcePackage('setuptools-%s.tar.gz' % version)
+
+  def egg_package(version):
+    return EggPackage('setuptools-%s-py2.7.egg' % version)
+
+  def wheel_package(version):
+    return WheelPackage('file:///tmp/setuptools-%s-py2.py3-none-any.whl' % version)
+
+  requirement = 'setuptools==7.0b1'
+
+  for package in (egg_package, source_package, egg_package, wheel_package):
+    prerelease_package = package('7.0b1')
+
+    # satisfies should not exclude prereleases if explicitly requested
+    assert prerelease_package.satisfies(requirement)

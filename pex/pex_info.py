@@ -12,6 +12,7 @@ from .common import open_zip
 from .compatibility import string as compatibility_string
 from .compatibility import PY2
 from .orderedset import OrderedSet
+from .util import merge_split
 from .variables import ENV
 
 PexPlatform = namedtuple('PexPlatform', 'interpreter version strict')
@@ -166,6 +167,19 @@ class PexInfo(object):
     self._pex_info['zip_safe'] = bool(value)
 
   @property
+  def pex_path(self):
+    """A colon separated list of other pex files to merge into the runtime environment.
+
+    This pex info property is used to persist the PEX_PATH environment variable into the pex info
+    metadata for reuse within a built pex.
+    """
+    return self._pex_info.get('pex_path')
+
+  @pex_path.setter
+  def pex_path(self, value):
+    self._pex_info['pex_path'] = value
+
+  @property
   def inherit_path(self):
     """Whether or not this PEX should be allowed to inherit system dependencies.
 
@@ -270,3 +284,11 @@ class PexInfo(object):
 
   def copy(self):
     return self.from_json(self.dump())
+
+  def merge_pex_path(self, pex_path):
+    """Merges a new PEX_PATH definition into the existing one (if any).
+    :param string pex_path: The PEX_PATH to merge.
+    """
+    if not pex_path:
+      return
+    self.pex_path = ':'.join(merge_split(self.pex_path, pex_path))

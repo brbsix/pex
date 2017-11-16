@@ -21,6 +21,7 @@ from .interpreter import PythonInterpreter
 from .orderedset import OrderedSet
 from .pex_info import PexInfo
 from .tracer import TRACER
+from .util import iter_pth_paths, merge_split
 from .variables import ENV
 
 
@@ -29,6 +30,9 @@ class DevNull(object):
     pass
 
   def write(self, *args, **kw):
+    pass
+
+  def flush(self):
     pass
 
 
@@ -65,13 +69,18 @@ class PEX(object):  # noqa: T000
       # set up the local .pex environment
       pex_info = self._pex_info.copy()
       pex_info.update(self._pex_info_overrides)
+      pex_info.merge_pex_path(self._vars.PEX_PATH)
       self._envs.append(PEXEnvironment(self._pex, pex_info))
-
-      # set up other environments as specified in PEX_PATH
-      for pex_path in filter(None, self._vars.PEX_PATH.split(os.pathsep)):
-        pex_info = PexInfo.from_pex(pex_path)
-        pex_info.update(self._pex_info_overrides)
-        self._envs.append(PEXEnvironment(pex_path, pex_info))
+      # N.B. by this point, `pex_info.pex_path` will contain a single pex path
+      # merged from pex_path in `PEX-INFO` and `PEX_PATH` set in the environment.
+      # `PEX_PATH` entries written into `PEX-INFO` take precedence over those set
+      # in the environment.
+      if pex_info.pex_path:
+        # set up other environments as specified in pex_path
+        for pex_path in filter(None, pex_info.pex_path.split(os.pathsep)):
+          pex_info = PexInfo.from_pex(pex_path)
+          pex_info.update(self._pex_info_overrides)
+          self._envs.append(PEXEnvironment(pex_path, pex_info))
 
       # activate all of them
       for env in self._envs:
@@ -85,18 +94,38 @@ class PEX(object):  # noqa: T000
   @classmethod
   def _extras_paths(cls):
     standard_lib = sysconfig.get_python_lib(standard_lib=True)
+
     try:
       makefile = sysconfig.parse_makefile(sysconfig.get_makefile_filename())
     except (AttributeError, IOError):
       # This is not available by default in PyPy's distutils.sysconfig or it simply is
       # no longer available on the system (IOError ENOENT)
       makefile = {}
+
     extras_paths = filter(None, makefile.get('EXTRASPATH', '').split(':'))
     for path in extras_paths:
       yield os.path.join(standard_lib, path)
 
-  @classmethod
-  def _get_site_packages(cls):
+    # Handle .pth injected paths as extras.
+    sitedirs = cls._get_site_packages()
+    for pth_path in cls._scan_pth_files(sitedirs):
+      TRACER.log('Found .pth file: %s' % pth_path, V=3)
+      for extras_path in iter_pth_paths(pth_path):
+        yield extras_path
+
+  @staticmethod
+  def _scan_pth_files(dir_paths):
+    """Given an iterable of directory paths, yield paths to all .pth files within."""
+    for dir_path in dir_paths:
+      if not os.path.exists(dir_path):
+        continue
+
+      pth_filenames = (f for f in os.listdir(dir_path) if f.endswith('.pth'))
+      for pth_filename in pth_filenames:
+        yield os.path.join(dir_path, pth_filename)
+
+  @staticmethod
+  def _get_site_packages():
     try:
       from site import getsitepackages
       return set(getsitepackages())
@@ -139,6 +168,11 @@ class PEX(object):  # noqa: T000
       # builtins can stay
       if not hasattr(module, '__path__'):
         new_modules[module_name] = module
+        continue
+
+      # Unexpected objects, e.g. namespace packages, should just be dropped:
+      if not isinstance(module.__path__, list):
+        TRACER.log('Dropping %s' % (module_name,), V=3)
         continue
 
       # Pop off site-impacting __path__ elements in-place.
@@ -233,9 +267,8 @@ class PEX(object):  # noqa: T000
   # potentially in a wonky state since the patches here (minimum_sys_modules
   # for example) actually mutate global state.  This should not be
   # considered a reversible operation despite being a contextmanager.
-  @classmethod
   @contextmanager
-  def patch_sys(cls, inherit_path):
+  def patch_sys(self, inherit_path):
     """Patch sys with all site scrubbed."""
     def patch_dict(old_value, new_value):
       old_value.clear()
@@ -248,7 +281,9 @@ class PEX(object):  # noqa: T000
 
     old_sys_path, old_sys_path_importer_cache, old_sys_modules = (
         sys.path[:], sys.path_importer_cache.copy(), sys.modules.copy())
-    new_sys_path, new_sys_path_importer_cache, new_sys_modules = cls.minimum_sys(inherit_path)
+    new_sys_path, new_sys_path_importer_cache, new_sys_modules = self.minimum_sys(inherit_path)
+
+    new_sys_path.extend(merge_split(self._pex_info.pex_path, self._vars.PEX_PATH))
 
     patch_all(new_sys_path, new_sys_path_importer_cache, new_sys_modules)
     yield
@@ -306,6 +341,10 @@ class PEX(object):  # noqa: T000
         profiler.dump_stats(pex_profile_filename)
       else:
         profiler.print_stats(sort=pex_profile_sort)
+
+  def path(self):
+    """Return the path this PEX was built at."""
+    return self._pex
 
   def execute(self):
     """Execute the PEX.
@@ -474,9 +513,8 @@ class PEX(object):  # noqa: T000
     process = Executor.open_process(cmdline,
                                     cwd=self._pex if with_chroot else os.getcwd(),
                                     preexec_fn=os.setsid if setsid else None,
-                                    # Explicitly don't redirect stdio for this execution.
-                                    stdin=None,
-                                    stdout=None,
-                                    stderr=None,
+                                    stdin=kwargs.pop('stdin', None),
+                                    stdout=kwargs.pop('stdout', None),
+                                    stderr=kwargs.pop('stderr', None),
                                     **kwargs)
     return process.wait() if blocking else process

@@ -155,7 +155,7 @@ class PythonIdentity(object):
   @property
   def python(self):
     # return the python version in the format of the 'python' key for distributions
-    # specifically, '2.6', '2.7', '3.2', etc.
+    # specifically, '2.7', '3.2', etc.
     return '%d.%d' % (self.version[0:2])
 
   def __str__(self):
@@ -328,7 +328,7 @@ class PythonInterpreter(object):
   @classmethod
   def sanitized_environment(cls):
     # N.B. This is merely a hack because sysconfig.py on the default OS X
-    # installation of 2.6/2.7 breaks.
+    # installation of 2.7 breaks.
     env_copy = os.environ.copy()
     env_copy.pop('MACOSX_DEPLOYMENT_TARGET', None)
     return env_copy

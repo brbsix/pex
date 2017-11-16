@@ -43,12 +43,14 @@ class ResolverOptionsBuilder(object):
                allow_all_external=False,
                allow_external=None,
                allow_unverified=None,
+               allow_prereleases=None,
                precedence=None,
                context=None):
     self._fetchers = fetchers if fetchers is not None else [PyPIFetcher()]
     self._allow_all_external = allow_all_external
     self._allow_external = allow_external if allow_external is not None else set()
     self._allow_unverified = allow_unverified if allow_unverified is not None else set()
+    self._allow_prereleases = allow_prereleases
     self._precedence = precedence if precedence is not None else Sorter.DEFAULT_PACKAGE_PRECEDENCE
     self._context = context or Context.get()
 
@@ -58,6 +60,7 @@ class ResolverOptionsBuilder(object):
         allow_all_external=self._allow_all_external,
         allow_external=self._allow_external.copy(),
         allow_unverified=self._allow_unverified.copy(),
+        allow_prereleases=self._allow_prereleases,
         precedence=self._precedence[:],
         context=self._context,
     )
@@ -114,11 +117,41 @@ class ResolverOptionsBuilder(object):
         [precedent for precedent in self._precedence if precedent is not SourcePackage])
     return self
 
+  # TODO: Make this whole interface more Pythonic.
+  #
+  # This method would be better defined as a property allow_prereleases.
+  # Unfortunately, the existing method below already usurps the name allow_prereleases.
+  # It is an existing API that returns self as if it was written in an attempt to allow
+  # Java style chaining of method calls.
+  # Due to that return type, it cannot be used as a Python property setter.
+  # It's currently used in this manner:
+  #
+  #     builder.allow_prereleases(True)
+  #
+  # and we cannot change it into @allow_prereleases.setter and use in this manner:
+  #
+  #     builder.allow_prereleases = True
+  #
+  # without affecting the existing API calls.
+  #
+  # The code review shows that, for this particular method (allow_prereleases),
+  # the return value (self) is never used in the current API calls.
+  # It would be worth examining if the API change for this and some other methods here
+  # would be a good idea.
+  @property
+  def prereleases_allowed(self):
+    return self._allow_prereleases
+
+  def allow_prereleases(self, allowed):
+    self._allow_prereleases = allowed
+    return self
+
   def build(self, key):
     return ResolverOptions(
         fetchers=self._fetchers,
         allow_external=self._allow_all_external or key in self._allow_external,
         allow_unverified=key in self._allow_unverified,
+        allow_prereleases=self._allow_prereleases,
         precedence=self._precedence,
         context=self._context,
     )
@@ -129,11 +162,13 @@ class ResolverOptions(ResolverOptionsInterface):
                fetchers=None,
                allow_external=False,
                allow_unverified=False,
+               allow_prereleases=None,
                precedence=None,
                context=None):
     self._fetchers = fetchers if fetchers is not None else [PyPIFetcher()]
     self._allow_external = allow_external
     self._allow_unverified = allow_unverified
+    self._allow_prereleases = allow_prereleases
     self._precedence = precedence if precedence is not None else Sorter.DEFAULT_PACKAGE_PRECEDENCE
     self._context = context or Context.get()
 
@@ -162,7 +197,10 @@ class ResolverOptions(ResolverOptionsInterface):
         translators.append(EggTranslator(interpreter=interpreter, platform=platform))
       elif package is SourcePackage:
         installer_impl = WheelInstaller if WheelPackage in self._precedence else EggInstaller
-        translators.append(SourceTranslator(installer_impl=installer_impl, interpreter=interpreter))
+        translators.append(SourceTranslator(
+            installer_impl=installer_impl,
+            interpreter=interpreter,
+            platform=platform))
 
     return ChainedTranslator(*translators)
 
@@ -171,4 +209,5 @@ class ResolverOptions(ResolverOptionsInterface):
         fetchers=self._fetchers,
         crawler=self.get_crawler(),
         follow_links=self._allow_external,
+        allow_prereleases=self._allow_prereleases
     )
